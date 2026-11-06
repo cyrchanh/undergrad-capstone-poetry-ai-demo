@@ -2,7 +2,7 @@
 
 **▶ [Interactive demo](https://cyrchanh.github.io/undergrad-capstone-poetry-ai-demo/)**. It runs in the browser with nothing to install. You can also clone the repo and open `index.html`.
 
-*HKU BASc Applied AI capstone (graded A+), continued as a funded research assistant role at the HKU Data Science Lab, Dec 2024 – Aug 2025. Hei Chan, technical lead.*
+*HKU BASc Applied AI capstone (graded A+), continued as a funded research assistant role at the HKU Data Science Lab, Dec 2024 – Aug 2025. Hei Chan, technical lead for text-to-video portion.*
 
 A generative pipeline that turns a Tang poem into **illustrated stills, a subtitled motion video, and recitation
 coaching** for primary-school students.
