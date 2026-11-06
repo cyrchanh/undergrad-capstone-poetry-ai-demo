@@ -1,0 +1,592 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Poetry to Picture</title>
+<meta name="description" content="HKU capstone (A+), continued as a funded research role: a generative pipeline that turns classical Chinese poems into images, video and recitation coaching. Ontology-structured prompting raised CLIP image-text scores by 82% over baseline prompting.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='4' y='4' width='24' height='24' rx='5' fill='%23b8322f'/%3E%3Cpath d='M10 11h12M16 11v11M11 22h10' stroke='%23fff' stroke-width='2.6' stroke-linecap='round'/%3E%3C/svg%3E">
+<style>
+:root{
+  --bg:#f8f6f1; --panel:#ffffff; --panel-2:#f1ede4; --ink:#1b1a17; --ink-2:#4d4a42; --ink-3:#827d70;
+  --line:#e4dfd3; --accent:#b8322f; --accent-soft:#f7e4e1; --jade:#1f8a6d; --jade-soft:#dff2eb;
+  --gold:#b7791f; --gold-soft:#f8ecd6; --grid:#ebe6da;
+  --shadow:0 1px 2px rgba(40,30,10,.04),0 8px 24px rgba(40,30,10,.06);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#121110; --panel:#1b1a18; --panel-2:#24221f; --ink:#efece4; --ink-2:#bdb7aa; --ink-3:#8c8678;
+    --line:#2f2c27; --accent:#ef6f67; --accent-soft:#3a1f1d; --jade:#4fd1a8; --jade-soft:#15302a;
+    --gold:#e8b25c; --gold-soft:#33281a; --grid:#2a2824;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#121110; --panel:#1b1a18; --panel-2:#24221f; --ink:#efece4; --ink-2:#bdb7aa; --ink-3:#8c8678;
+  --line:#2f2c27; --accent:#ef6f67; --accent-soft:#3a1f1d; --jade:#4fd1a8; --jade-soft:#15302a;
+  --gold:#e8b25c; --gold-soft:#33281a; --grid:#2a2824;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;-webkit-font-smoothing:antialiased}
+.mono,code{font-family:ui-monospace,"SFMono-Regular","Cascadia Code",Consolas,monospace}
+.zh{font-family:"Songti SC","STSong","Noto Serif SC","SimSun",serif}
+a{color:var(--accent)}
+img,video{max-width:100%;display:block}
+.wrap{max-width:1100px;margin:0 auto;padding:0 16px}
+header.top{position:sticky;top:0;z-index:10;background:color-mix(in srgb,var(--bg) 86%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.top-row{display:flex;align-items:center;justify-content:space-between;height:56px;gap:16px}
+.brand{font-weight:700;color:var(--ink);text-decoration:none;display:flex;gap:8px;align-items:center;white-space:nowrap}
+.brand b{display:grid;place-items:center;width:24px;height:24px;border-radius:6px;background:var(--accent);color:#fff;font-size:14px}
+nav{display:flex;gap:18px;overflow-x:auto;scrollbar-width:none}
+nav a{color:var(--ink-2);text-decoration:none;font-size:14px;white-space:nowrap}
+nav a:hover{color:var(--ink)}
+.theme-btn{border:1px solid var(--line);background:var(--panel);color:var(--ink-2);border-radius:8px;padding:4px 8px;cursor:pointer;font-size:13px}
+@media (max-width:760px){nav a:not(.keep){display:none}}
+
+section{padding:72px 0 8px}
+.hero{padding-top:56px;display:grid;grid-template-columns:1.1fr .9fr;gap:36px;align-items:center}
+@media (max-width:900px){.hero{grid-template-columns:1fr}}
+.eyebrow{color:var(--accent);font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase;margin:0 0 12px}
+h1{font-size:clamp(32px,5vw,54px);line-height:1.06;letter-spacing:-.025em;margin:0 0 20px}
+h1 em{font-style:normal;color:var(--accent)}
+.lede{font-size:clamp(17px,2vw,19px);color:var(--ink-2);margin:0 0 26px}
+.cta{display:flex;gap:12px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:10px 16px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--ink);text-decoration:none;font-weight:600;font-size:15px}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.hero-media{position:relative;border-radius:18px;overflow:hidden;box-shadow:var(--shadow);border:1px solid var(--line);background:#000}
+.hero-media video{width:100%;aspect-ratio:16/9;object-fit:cover}
+.hero-media .tag{position:absolute;left:12px;top:12px;background:rgba(0,0,0,.6);color:#fff;font-size:12px;padding:4px 9px;border-radius:999px}
+.stats{list-style:none;padding:0;margin:40px 0 0;display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+@media (max-width:820px){.stats{grid-template-columns:repeat(2,1fr)}}
+.stats li{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;box-shadow:var(--shadow)}
+.stats b{display:block;font-size:30px;letter-spacing:-.02em;line-height:1.1}
+.stats span{color:var(--ink-3);font-size:14px}
+
+.sec-head{max-width:70ch;margin-bottom:28px}
+.sec-head .num{font-family:ui-monospace,Consolas,monospace;color:var(--accent);font-size:13px;font-weight:600}
+h2{font-size:clamp(26px,3.4vw,36px);letter-spacing:-.02em;line-height:1.15;margin:6px 0 12px}
+h3{font-size:18px;margin:0 0 8px;letter-spacing:-.01em}
+.sec-head p{color:var(--ink-2);margin:0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px;box-shadow:var(--shadow)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+@media (max-width:860px){.grid2,.grid3{grid-template-columns:1fr}}
+.muted{color:var(--ink-3);font-size:14px}
+.small{font-size:14px;color:var(--ink-2)}
+.pill{display:inline-block;font-size:12px;font-weight:600;padding:2px 9px;border-radius:999px;background:var(--panel-2);color:var(--ink-2)}
+.pill.good{background:var(--jade-soft);color:var(--jade)}
+.pill.part{background:var(--gold-soft);color:var(--gold)}
+.pill.miss{background:var(--accent-soft);color:var(--accent)}
+.callout{border-left:3px solid var(--accent);background:var(--accent-soft);padding:14px 16px;border-radius:0 12px 12px 0;margin:16px 0 0}
+.callout.jade{border-color:var(--jade);background:var(--jade-soft)}
+.callout.gold{border-color:var(--gold);background:var(--gold-soft)}
+.chip{border:1px solid var(--line);background:var(--panel);color:var(--ink-2);border-radius:999px;padding:6px 12px;font-size:13px;font-weight:600;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.row-btns{display:flex;gap:8px;flex-wrap:wrap}
+svg text{fill:var(--ink-2);font-family:inherit}
+.chart{width:100%;height:auto;display:block}
+
+/* problem */
+.contrast{display:grid;grid-template-columns:auto 1fr 1fr;gap:0;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.contrast>div{padding:12px 14px;border-bottom:1px solid var(--line);font-size:14px}
+.contrast .h{background:var(--panel-2);font-weight:600;color:var(--ink-3);font-size:12px;text-transform:uppercase;letter-spacing:.05em}
+.contrast .zh{font-size:20px;white-space:nowrap}
+.contrast .lit{color:var(--accent)} .contrast .mean{color:var(--jade)}
+@media (max-width:700px){.contrast{grid-template-columns:1fr}.contrast .h{display:none}.contrast .zh{border-bottom:0;padding-bottom:0}}
+
+/* pipeline diagram */
+.pipe{display:grid;grid-template-columns:1fr 1.5fr 1fr 1.3fr;gap:12px;align-items:stretch}
+@media (max-width:900px){.pipe{grid-template-columns:1fr}}
+.stage{background:var(--panel-2);border-radius:12px;padding:14px}
+.stage .k{font:700 12px ui-monospace,Consolas,monospace;color:var(--ink-3);letter-spacing:.04em}
+.stage b{display:block;margin:2px 0 6px}
+.stage ul{margin:0;padding-left:18px;font-size:14px;color:var(--ink-2)}
+.quad{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}
+.quad span{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 8px;font-size:13px;font-weight:600}
+
+/* explorer */
+.explorer{display:grid;grid-template-columns:260px 1fr;gap:20px}
+@media (max-width:900px){.explorer{grid-template-columns:1fr}}
+.lines{display:flex;flex-direction:column;gap:4px;max-height:640px;overflow:auto;padding-right:4px}
+@media (max-width:900px){.lines{flex-direction:row;overflow-x:auto;max-height:none;padding-bottom:6px}}
+.ln{display:flex;align-items:center;gap:10px;text-align:left;border:1px solid transparent;background:none;border-radius:10px;padding:6px 8px;cursor:pointer;color:var(--ink);flex:0 0 auto}
+.ln:hover{background:var(--panel-2)}
+.ln[aria-selected="true"]{background:var(--accent-soft);border-color:var(--accent)}
+.ln img{width:40px;height:40px;border-radius:7px;object-fit:cover}
+.ln .zh{font-size:17px;white-space:nowrap}
+.ln .dot{width:8px;height:8px;border-radius:50%;margin-left:auto}
+@media (max-width:900px){.ln .zh{display:none}.ln .dot{display:none}}
+.detail{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px}
+@media (max-width:700px){.detail{grid-template-columns:1fr}}
+.detail img{border-radius:14px;width:100%;aspect-ratio:1;object-fit:cover;border:1px solid var(--line)}
+.big-zh{font-size:34px;line-height:1.2;margin:0}
+.slots{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;font-size:14px;margin:14px 0}
+.slots dt{color:var(--ink-3);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.04em;padding-top:2px;white-space:nowrap}
+.slots dd{margin:0;color:var(--ink)}
+.tok{font:13px/1.7 ui-monospace,Consolas,monospace;background:var(--panel-2);border-radius:10px;padding:10px 12px;word-break:break-word}
+.tok .cut{color:var(--ink-3);text-decoration:line-through;text-decoration-color:var(--accent);background:var(--accent-soft);border-radius:3px}
+.tok .flag{background:var(--gold-soft);color:var(--gold);border-radius:3px;padding:0 2px}
+.meterline{display:flex;justify-content:space-between;font-size:12px;color:var(--ink-3);margin-top:6px}
+.bar{height:8px;border-radius:999px;background:var(--panel-2);overflow:hidden;position:relative}
+.bar i{position:absolute;inset:0 auto 0 0;background:var(--jade);border-radius:999px}
+.bar b{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--accent)}
+
+/* gallery */
+.gal{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}
+@media (max-width:860px){.gal{grid-template-columns:repeat(4,1fr)}}
+@media (max-width:520px){.gal{grid-template-columns:repeat(3,1fr)}}
+.gal button{padding:0;border:0;background:none;cursor:pointer;position:relative;border-radius:10px;overflow:hidden;transition:opacity .2s, transform .2s}
+.gal button.dim{opacity:.18}
+.gal button:hover{transform:translateY(-2px)}
+.gal img{aspect-ratio:1;object-fit:cover;width:100%}
+.gal .badge{position:absolute;left:6px;bottom:6px;width:10px;height:10px;border-radius:50%;border:2px solid #fff}
+.fail{display:grid;grid-template-columns:120px 1fr;gap:14px;align-items:start;padding:14px 0;border-top:1px solid var(--line)}
+.fail img{border-radius:10px;aspect-ratio:1;object-fit:cover}
+@media (max-width:520px){.fail{grid-template-columns:80px 1fr}}
+
+/* recitation */
+.poemline{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 14px}
+.ch{width:52px;height:60px;border-radius:10px;border:1.5px solid var(--line);background:var(--panel-2);display:grid;place-items:center;font-size:26px;cursor:pointer;position:relative}
+.ch.stress{border-color:var(--accent);background:var(--accent-soft)}
+.ch .py{position:absolute;top:3px;font:10px ui-monospace,Consolas,monospace;color:var(--ink-3)}
+.sep{width:3px;border-radius:3px;background:var(--gold);align-self:stretch;margin:0 4px}
+.guide{font-size:14px;color:var(--ink-2)}
+.guide dt{font-weight:700;color:var(--ink);margin-top:8px}
+.guide dd{margin:0}
+input[type=range]{width:100%;accent-color:var(--accent)}
+.ctrl{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:8px}
+@media (max-width:600px){.ctrl{grid-template-columns:1fr}}
+.ctrl label{font-size:13px;color:var(--ink-2)}
+
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--ink-3);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.05em}
+.scroll-x{overflow-x:auto}
+.timeline{list-style:none;margin:0;padding:0;border-left:2px solid var(--line)}
+.timeline li{position:relative;padding:0 0 18px 20px}
+.timeline li::before{content:"";position:absolute;left:-7px;top:6px;width:12px;height:12px;border-radius:50%;background:var(--accent)}
+.timeline li.end::before{background:var(--ink-3)}
+.timeline b{display:block}
+footer{margin-top:80px;padding:32px 0 48px;border-top:1px solid var(--line);color:var(--ink-3);font-size:14px}
+.reveal{opacity:0;transform:translateY(14px);transition:opacity .6s,transform .6s}
+.reveal.in{opacity:1;transform:none}
+@media (prefers-reduced-motion:reduce){.reveal{opacity:1;transform:none;transition:none}html{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap top-row">
+    <a class="brand" href="#"><b>诗</b>Poetry to Picture</a>
+    <nav>
+      <a href="#problem">Problem</a>
+      <a href="#pipeline">Pipeline</a>
+      <a href="#explore">Explore</a>
+      <a href="#failures">Failures</a>
+      <a href="#recite">Recitation</a>
+      <a href="#outcome">Outcome</a>
+    </nav>
+    <button class="theme-btn" id="themeBtn" aria-label="Toggle colour theme">◐</button>
+  </div>
+</header>
+
+<main>
+
+<section class="wrap">
+  <div class="hero">
+    <div>
+      <p class="eyebrow">HKU · BASc Applied AI · Capstone (A+) → funded research · 2024–25</p>
+      <h1>Teaching a machine to <em>see</em> classical Chinese poetry</h1>
+      <p class="lede">A generative pipeline that turns a Tang poem into illustrated images, a subtitled motion video and
+        recitation coaching for primary-school students. Text-to-image models take poetry literally. The core idea is
+        an <b>ontology step</b>: four parallel LLM analysts break each line into subject, scene, time and mood before
+        anything is drawn.</p>
+      <div class="cta">
+        <a class="btn primary" href="#explore">▶ Explore a poem line by line</a>
+        <a class="btn" href="#failures">See where it fails</a>
+      </div>
+    </div>
+    <figure class="hero-media" style="margin:0">
+      <video src="assets/ganyu-clip.mp4" poster="assets/ganyu-poster.jpg" autoplay muted loop playsinline preload="metadata" aria-label="Generated video for 感遇 (Ganyu), first 34 seconds"></video>
+      <span class="tag">Real pipeline output · 感遇 · Zhang Jiuling</span>
+    </figure>
+  </div>
+  <ul class="stats" aria-label="Project at a glance">
+    <li><b>+82%</b><span>CLIP image–text score vs. baseline prompting, confirmed by human review</span></li>
+    <li><b>300+</b><span>poems rendered to video as single-command batch jobs on HKU's GPU cluster</span></li>
+    <li><b>4</b><span>parallel ontology analysts per line (GLM-4)</span></li>
+    <li><b>3</b><span>outputs: illustrated stills, motion video, recitation feedback</span></li>
+  </ul>
+</section>
+
+<!-- ============ PROBLEM ============ -->
+<section id="problem" class="wrap reveal">
+  <div class="sec-head">
+    <span class="num">00 · THE PROBLEM</span>
+    <h2>Poetry says one thing and means another</h2>
+    <p>Classical Chinese verse is compressed, allusive and figurative. Image models read words. Asking an LLM to translate a line in
+      one shot gives a literal paraphrase. A few-shot prompt helps on the examples it was shown, then breaks on the next poem. These are lines from the poems on this page:</p>
+  </div>
+  <div class="contrast">
+    <div class="h">Line</div><div class="h">A literal reading draws…</div><div class="h">What the poem means</div>
+    <div class="zh">池潢不敢顾</div><div class="lit">a pond and a moat</div><div class="mean">the lone goose <i>doesn't dare look down</i> at the ponds: caution after danger</div>
+    <div class="zh">苍苍横翠微</div><div class="lit">"green" and "faint", with no clear subject</div><div class="mean">a blue-green haze lies across the hills at dusk</div>
+    <div class="zh">高明逼神恶</div><div class="lit">something high and bright</div><div class="mean">eminence draws the envy of the gods: a warning about status</div>
+    <div class="zh" style="border-bottom:0">陶然共忘机</div><div class="lit" style="border-bottom:0">two people, an abstract noun</div><div class="mean" style="border-bottom:0">tipsy and content, both forgetting the world's scheming</div>
+  </div>
+  <p class="muted">There's a second problem too: diffusion sampling is random, so even a perfect prompt can produce a bad image.</p>
+</section>
+
+<!-- ============ PIPELINE ============ -->
+<section id="pipeline" class="wrap reveal">
+  <div class="sec-head">
+    <span class="num">01 · THE PIPELINE</span>
+    <h2>Understand first, then draw, then pick the best</h2>
+    <p>Borrowing two ideas from retrieval research: <b>RAG</b>, by grounding each line in retrieved context (a translation, cultural-term readings and a whole-poem reading),
+      and <b>HyDE</b>, by having the LLM write a hypothetical <em>visual description</em> and generating from that instead of the raw text.</p>
+  </div>
+  <div class="pipe">
+    <div class="stage"><span class="k">STAGE 1</span><b>Ground the line</b>
+      <ul><li>Split into half-lines</li><li>English translation</li><li>Cultural terms → concrete visuals (e.g. 渔父 → "an old fisherman on a wooden boat")</li><li>Whole-poem scene, light and mood</li></ul></div>
+    <div class="stage"><span class="k">STAGE 2 · PARALLEL</span><b>Four ontology analysts</b>
+      <span class="small">Each one sees the line, the previous line and the stage-1 context, and fills one slot of a fixed schema. They run concurrently and their results are cached.</span>
+      <div class="quad"><span>👤 Subject + action</span><span>🏞 Scene + objects</span><span>🌙 Time + weather</span><span>🎨 Light, mood, colour</span></div></div>
+    <div class="stage"><span class="k">STAGE 3</span><b>Pack the prompt</b>
+      <ul><li>Parse the slots</li><li>Assemble: featuring · with · in · under · creating · colour · style</li><li>Carry subjects across lines for continuity</li></ul></div>
+    <div class="stage"><span class="k">STAGE 4</span><b>Generate and select</b>
+      <ul><li>SDXL base + refiner, 1024²</li><li>N samples per line; CLIP ranks them; keep the best</li><li>Bayesian optimisation of guidance scale (7–12) per line</li><li>SVD-XT animates each still; SDXL img2img morphs between them; ffmpeg adds subtitles</li></ul></div>
+  </div>
+  <div class="grid2" style="margin-top:16px">
+    <div class="card">
+      <h3>Why parallel slots instead of one big prompt?</h3>
+      <p class="small" style="margin:0">Few-shot examples were too rigid: they fixed the examples they showed and broke on the next poem. A schema generalises better. Each analyst has one narrow job
+        and its own hard rules: <i>list every physical object, with counts</i>; <i>if a moon is mentioned, it's night</i>; <i>turn feelings into visible poses</i>.
+        Narrow jobs are easier to check and fix one at a time, and the four analysts run concurrently rather than one after another.</p>
+    </div>
+    <div class="card">
+      <h3>Morphing between scenes</h3>
+      <p class="small" style="margin-top:0">Transitions re-diffuse a cross-fade. Img2img strength peaks mid-transition, so the model repaints the most where the two images are most mixed. Drag the slider:</p>
+      <svg class="chart" id="morphChart" viewBox="0 0 440 150" role="img" aria-label="Transition schedule: blend and img2img strength over 30 frames"></svg>
+      <input type="range" id="morphT" min="0" max="29" value="9" aria-label="Transition frame">
+      <div class="small mono" id="morphTxt"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ EXPLORER ============ -->
+<section id="explore" class="wrap reveal">
+  <div class="sec-head">
+    <span class="num">02 · EXPLORE A REAL RUN</span>
+    <h2>One poem, fourteen half-lines, fourteen images</h2>
+    <p>Li Bai, <span class="zh">《下终南山过斛斯山人宿置酒》</span> (<i>Coming down Zhongnan Mountain, I spend the night at the hermit Husi's, and he serves wine</i>).
+      Each line below shows the ontology slots the analysts produced, the packed prompt, and the image the pipeline picked. All of it is unedited output from one run.</p>
+  </div>
+  <div class="card">
+    <div class="explorer">
+      <div class="lines" id="lines" role="listbox" aria-label="Poem lines"></div>
+      <div id="detail" aria-live="polite"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FAILURES ============ -->
+<section id="failures" class="wrap reveal">
+  <div class="sec-head">
+    <span class="num">03 · WHERE IT STILL GOES WRONG</span>
+    <h2>An honest error analysis</h2>
+    <p>The ontology step was a clear win, and the remaining failures can be traced to specific causes. My own qualitative read of the run above:</p>
+  </div>
+  <div class="card">
+    <div class="row-btns" id="galFilters" style="margin-bottom:12px"></div>
+    <div class="gal" id="gal"></div>
+  </div>
+  <div class="grid2" style="margin-top:16px">
+    <div class="card">
+      <h3>Root causes, traced from the logs</h3>
+      <div class="fail"><img src="assets/stills/line-14.jpg" alt="Line 14 image: a man and woman toasting in a European cottage" loading="lazy">
+        <div><b>1 · The judge often never saw the style tag</b><p class="small" style="margin:4px 0 0">CLIP's text encoder stops at 77 tokens. When I re-ran its real tokenizer on these prompts,
+          <b>8 of 14</b> lost <code>traditional China</code>, and on lines 12–14 it never saw the setting either. Best-of-N was then ranking on everything except the cultural constraint.
+          3 of the 4 misses fall in that group, which is suggestive, though 14 lines can't prove it.</p></div></div>
+      <div class="fail"><img src="assets/stills/line-06.jpg" alt="Line 6 image: European-looking children at a wooden gate" loading="lazy">
+        <div><b>2 · Schema text leaked into the prompt</b><p class="small" style="margin:4px 0 0">The analysts were told never to write "not further described in terms of appearance or clothing". It slipped through anyway, along with a stray
+          <span class="zh">森林</span>. With no cultural anchor on "young children", SDXL's default prior took over.</p></div></div>
+      <div class="fail"><img src="assets/ganyu-frames.jpg" alt="Frames from the Ganyu video, including a white goose in an ornate purple hall" loading="lazy" style="aspect-ratio:auto">
+        <div><b>3 · A literal judge, and literal readings</b><p class="small" style="margin:4px 0 0">Even when the whole prompt fits, CLIP rewards a literal match. On line 4, "gazing across lush greenery" let a bedroom with a window win.
+          In the <span class="zh">感遇</span> video, <span class="zh">高明逼神恶</span> ("eminence invites the gods' envy") came out as an ornate purple palace.
+          The concrete lines worked well: <span class="zh">双翠鸟</span> became a correctly drawn pair of kingfishers.</p></div></div>
+    </div>
+    <div class="card">
+      <h3>What I'd change next</h3>
+      <ul class="small" style="padding-left:18px;margin:0 0 12px">
+        <li><b>Front-load what matters.</b> Put style and culture first, or score them as a separate CLIP query, so they can't be truncated.</li>
+        <li><b>Use structured output.</b> Have the analysts return schema-validated JSON instead of parsing free text with <code>startswith()</code>, and reject on leaks.</li>
+        <li><b>Use a multilingual judge.</b> CLIP is English-only and literal, so it measures agreement with <em>our prompt</em>, not with the poem. That's why the headline +82% was confirmed by human review.</li>
+        <li><b>Add a figurative-line router.</b> Detect metaphor or abstraction and switch to a symbolic depiction instead of a literal one.</li>
+        <li><b>Fact-check the LLM.</b> In the recitation guide, GLM-4 attributed <span class="zh">感遇</span> to Wang Zhihuan; it's by Zhang Jiuling. Author and title metadata should come from the database, not from the model.</li>
+      </ul>
+      <div class="callout jade small">Why include this at all? A pipeline you can debug down to the token is worth more than a cherry-picked gallery.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ RECITATION ============ -->
+<section id="recite" class="wrap reveal">
+  <div class="sec-head">
+    <span class="num">04 · THE RECITATION COACH</span>
+    <h2>Turning a recording into something an LLM can reason about</h2>
+    <p>The second half of the project is a web app where children practise reciting. LLMs can't listen, so the audio is converted into a
+      <b>per-character feature table</b> they can read. The four features (stress, duration, pause and pitch) follow guidance from a poetry-recitation researcher at EdUHK,
+      and each is measured <em>relative to the same speaker</em>.</p>
+  </div>
+  <div class="grid2">
+    <div class="card">
+      <h3>From waveform to features</h3>
+      <ol class="small" style="padding-left:18px;margin:0">
+        <li><b>ASR with character timestamps</b>: iFlytek at first, later swapped for Gemini 1.5 Pro</li>
+        <li><b>Pause detection</b> on RMS energy, after normalisation</li>
+        <li><b>Pitch</b> from the dominant FFT frequency (1024-sample window, 50% hop)</li>
+        <li><b>Per-character table</b>: volume, duration, pause and pitch levels</li>
+        <li><b>Two LLM calls</b>: an expert reading guide for the poem, then feedback comparing the student's table against it</li>
+      </ol>
+      <p class="small">Switching from a median threshold to an RMS-energy threshold, and lowering the threshold factor from 2.5 to 1.2, fixed missed pauses. Try it on a synthetic signal:</p>
+      <svg class="chart" id="waveChart" viewBox="0 0 460 170" role="img" aria-label="Synthetic speech energy with detected pauses"></svg>
+      <div class="ctrl">
+        <label>Threshold factor: <b class="mono" id="thrV">1.2</b><input type="range" id="thr" min="0.6" max="3" step="0.1" value="1.2"></label>
+        <label>Min. silence: <b class="mono" id="silV">500</b> ms<input type="range" id="sil" min="100" max="900" step="50" value="500"></label>
+      </div>
+      <p class="muted" id="waveTxt" style="margin:6px 0 0"></p>
+    </div>
+    <div class="card">
+      <h3>The reading guide (real GLM-4 output, translated)</h3>
+      <p class="small" style="margin-top:0">Click a line. Highlighted characters should be stressed, and the gold bar marks the expected caesura for the five-character form.</p>
+      <div class="row-btns" id="rLines" style="margin-bottom:12px"></div>
+      <div id="rLine"></div>
+      <div class="callout gold small"><b>In the app:</b> each character turns red or green after you recite, and hovering shows the pinyin, tone and a comment. You also get a rhythm score
+        from expected-pause accuracy, Mandarin or Cantonese support, feedback in Traditional Chinese, and auto-generated comprehension questions.
+        Scoring was made deliberately generous, with a floor of 50, because the users were primary-school children.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ OUTCOME ============ -->
+<section id="outcome" class="wrap reveal">
+  <div class="sec-head">
+    <span class="num">05 · OUTCOME</span>
+    <h2>From capstone to a funded role to a product decision</h2>
+  </div>
+  <div class="grid2">
+    <div class="card">
+      <ul class="timeline small">
+        <li><b>Capstone, technical lead · graded A+</b>Ontology prompting, the image and video pipeline, and the first recitation analysis.</li>
+        <li><b>Funded research assistant, HKU Data Science Lab · Dec 2024 – Aug 2025</b>Continued the project; built the web app with speech synthesis; scaled generation to 300+ poems as single-command batch jobs on the GPU cluster.</li>
+        <li><b>HKSTP seed-funding pitch</b>Led the technical preparation.</li>
+        <li class="end"><b>Funding declined → wound down</b>The team reassessed the market and chose to stop. Knowing when to stop is a result too.</li>
+      </ul>
+    </div>
+    <div class="card scroll-x">
+      <table>
+        <thead><tr><th>Area</th><th>What it involved</th></tr></thead>
+        <tbody>
+          <tr><td>LLM systems</td><td class="small">Decomposed prompting, RAG/HyDE-style grounding, concurrent calls, caching, cross-line context</td></tr>
+          <tr><td>Generative vision</td><td class="small">SDXL base + refiner, img2img transitions, Stable Video Diffusion, CLIP reranking, Bayesian optimisation</td></tr>
+          <tr><td>Speech / DSP</td><td class="small">ASR alignment, RMS pause detection, FFT pitch tracking, feature engineering for LLM input</td></tr>
+          <tr><td>Evaluation</td><td class="small">CLIP scoring with human review, error analysis down to the token</td></tr>
+          <tr><td>Engineering</td><td class="small">Batch jobs on a shared GPU cluster, ffmpeg assembly, a Node/Express web app</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <p><b>Poetry to Picture</b>, Hei Chan. BASc Applied Artificial Intelligence, The University of Hong Kong. HKU Data Science Lab, 2024–25.</p>
+    <p>Every image and video on this page is unedited output from the pipeline. Line translations and verdicts are my own. The research code is not published here.
+      Questions are welcome via <a href="https://github.com/cyrchanh">GitHub</a>.</p>
+  </div>
+</footer>
+
+<script>
+(() => {
+  const $ = s => document.querySelector(s);
+  const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+  const root = document.documentElement;
+  try { const t = localStorage.getItem('theme'); if (t) root.dataset.theme = t; } catch(e) {}
+  $('#themeBtn').onclick = () => {
+    const dark = root.dataset.theme ? root.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+    root.dataset.theme = dark ? 'light' : 'dark';
+    try { localStorage.setItem('theme', root.dataset.theme); } catch(e) {}
+    drawAll();
+  };
+  const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), {threshold:.06});
+  document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+  const esc = s => s.replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+
+  // ---------- data: real run (prompts verbatim from the pipeline's prompt log) ----------
+  const L = [
+    ['暮从碧山下','At dusk I come down the green mountain','good','featuring [A traveler(s)] | with [descending a hillside] | in mountain slope | under clear, [soft twilight hues | creating [serene mountain tranquility atmosphere | in [emerald green | RTX realism with ray tracing, traditional China'],
+    ['山月随人归','the mountain moon follows me home','good','featuring [A traveler, wearing unspecified clothing] | with [walking down the mountain path, accompanied by the moon] | in a path descending from the mountains | under clear with a gentle moonlight, [Gentle moonlight casting a soft glow | creating [A serene and tranquil ambiance atmosphere | in [Silvery blues of the moonlit night | RTX realism with ray tracing, traditional China'],
+    ['却顾所来径','I turn to look back down the path I came','good','featuring [The traveler] | with [glancing back at the path they have traversed] | in a mountainside path | under clear with a gentle twilight glow transitioning to a moonlit darkness, Soft | creating Reflective and slightly nostalgic atmosphere | in A palette of twilight blues merging into earthy greens and warm | RTX realism with ray tracing, traditional China'],
+    ['苍苍横翠微','a blue-green haze lies across the hills','miss','featuring [The traveler] | with [gazing across the vast expanse of lush greenery] | in mountainside | under clear with a gentle breeze, Soft | creating Serene and expansive atmosphere | in Deep forest greens with hints of emerald | RTX realism with ray tracing, traditional China'],
+    ['相携及田家','hand in hand, we reach a farmer\'s home','part','featuring People, presumably friends or companions | with Walking together hand in hand, arriving at a farmhouse | in a farmhouse in a rural setting | under clear with a gentle breeze, Soft | creating Serene and companionable countryside charm atmosphere | in Warm earthy hues with splashes of emerald and jade | RTX realism with ray tracing, traditional China'],
+    ['童稚开荆扉','children open the thornwood gate','miss','featuring young children, not further described in terms of appearance or clothing | with playfully opening a gate adorned with thorns, their expressions filled with curiosity and innocence as they welcome the visitors to the farmhouse | in rural farmhouse entrance | under gentle twilight, Soft | creating Idyllic and serene atmosphere | in Earthy greens mixed with the warm golden hues of late afternoon transitioning into the cool blues of early evening | RTX realism with ray tracing, traditional China'],
+    ['绿竹入幽径','green bamboo lines a secluded path','good','featuring Young children, not further described in terms of appearance or clothing | with Having opened the thorny gate, they now step into a path lined with lush green bamboo, leading to a secluded and peaceful area. | in secluded path | under calm, Soft | creating A serene and introspective ambiance envelops the scene atmosphere | in The dominant color tones are various shades of green | RTX realism with ray tracing, traditional China'],
+    ['青萝拂行衣','green vines brush the traveller\'s robe','good','featuring [a traveler, wearing traditional traveling clothes] | with [walking down a secluded path, brushing against the green ivy] | in a mountainside path | under calm, Soft | creating A serene and immersive森林vibe atmosphere | in A palette of deep greens | RTX realism with ray tracing, traditional China'],
+    ['欢言得所憩','we talk happily, glad of a place to rest','part','featuring [A group of friends or travelers, dressed in simple, possibly travel-stained attire, consistent with a journey through a natural setting] | with [Engaging in joyful conversation, expressing contentment and relaxation as they find a place to rest] | in mountainside | under clear, Soft | creating A cozy atmosphere | in Rich autumnal hues | RTX realism with ray tracing, traditional China'],
+    ['美酒聊共挥','and share good wine together','part','featuring [companions, not further described in terms of appearance or clothing] | with [raising delicate wine cups in unison, their faces beaming with joy as they prepare to share a toast] | in rustic farmhouse | under clear, Soft | creating Intimate and inviting atmosphere | in Rich | RTX realism with ray tracing, traditional China'],
+    ['长歌吟松风','long songs chant with the wind in the pines','part','featuring [Characters previously described as walking down the mountain, now gathered at a rural farmhouse] | with [Singing lengthy verses with gusto, swaying to the rhythm of the wind whispering through the pines] | in a hillside dense with pine trees | under gentle breeze through the pines, Soft | creating Serene and contemplative atmosphere | in Forest greens with touches of golden sunlight | RTX realism with ray tracing, traditional China'],
+    ['曲尽河星稀','the song ends; the stars of the Milky Way thin out','part','featuring [The travelers, wearing attire that blends with the simplicity of their environment; the hosts, possibly in traditional farming clothing, indicating their connection to the land] | with [The travelers, having indulged in the merriment of long songs accompanied by the breeze through the pines, now stand in awe; the hosts, joining the travelers in gazing at the night sky] | in a bend in the river | under clear with sparse stars, Soft | creating Serene atmosphere | in Blues and greys with hints of silver from the starlight | RTX realism with ray tracing, traditional China'],
+    ['我醉君复乐','I am drunk, and you are merry too','miss','featuring [The speaker, a person in a state of intoxication; The "jun," a companion who is also present] | with [The speaker is swaying gently, a smile on their face as they indulge in the joy of the moment; The companion, "jun," is mirroring the speaker\'s joy, their expression one of contentment and amusement] | in rustic farmhouse | under clear, Soft | creating A cozy atmosphere | in Rich earthy tones with splashes of warm gold and ruby from the hearth | RTX realism with ray tracing, traditional China'],
+    ['陶然共忘机','content, we both forget the world\'s schemes','miss','featuring [The character, previously described as walking down the mountain, now in the warmth of the farmhouse] | with [Sitting with companions, a contented smile on his face, raising a cup in a toast, expressions soft with the ease of conversation and shared laughter, embodying a state of carefree joy] | in a secluded farmhouse | under clear, Soft | creating A tranquil escape from the world atmosphere | in A palette of lush greens | RTX realism with ray tracing, traditional China'],
+  ];
+  const NOTE = {
+    0:'Clean: the traveller, slope, pavilions and dusk light are all present.',
+    1:'Strong: the moon "following" the walker is read correctly as a companion in the sky.',
+    2:'Good continuity: the analyst carried "the traveler" forward from the previous line.',
+    3:'Miss: the prompt fits CLIP, so this one is root cause 3, a literal judge. "Gazing across lush greenery" is satisfied just as well by a bedroom with a window view.',
+    4:'Partial: hand in hand at a farmhouse, but the clothing and architecture drift toward Europe.',
+    5:'Miss: the leaked "not further described…" text left "young children" with no cultural anchor. Root cause 2.',
+    6:'Good: the bamboo path is right, and the figure is small, as the line implies.',
+    7:'Good: robe, conical hat and brushing vines. A stray "森林" leaked into the mood slot.',
+    8:'Partial: the group and the rest are right; the season and dress are not ("autumnal hues").',
+    9:'Partial: the toast is right; the wine glasses and farmhouse interior are Western.',
+    10:'Partial: the pines are right, but the singers are missing, so it\'s scenery only.',
+    11:'Partial: the style drifts to a woodblock look and the starry sky is lost.',
+    12:'Miss: "intoxication" produced a caricature. CLIP was cut off before the setting, so "rustic farmhouse" never reached the judge.',
+    13:'Miss: a contented toast in a European cottage. CLIP never saw the mood, the colour or "traditional China". Root cause 1.'
+  };
+  const VC = {good:'--jade',part:'--gold',miss:'--accent'};
+  const VL = {good:'On target',part:'Partial',miss:'Miss'};
+
+  // exact CLIP tokenisation (openai/clip-vit-base-patch32 tokenizer, run offline on these prompts):
+  // [content tokens, char index of the first character CLIP never sees (-1 = fits in the 75-token window)]
+  const TOK = [[49,-1],[78,362],[72,-1],[55,-1],[68,-1],[87,443],[88,375],[69,-1],[78,378],[66,-1],[83,400],[117,383],[116,313],[100,354]];
+  const parse = p => {
+    const parts = p.split(' | ').map(x => x.replace(/[\[\]]/g,'').trim());
+    const take = (re, i) => (parts[i]||'').replace(re,'').trim();
+    return [
+      ['Subject', take(/^featuring\s*/i,0)],
+      ['Action', take(/^with\s*/i,1)],
+      ['Scene', take(/^in\s*/i,2)],
+      ['Light / weather', take(/^under\s*/i,3)],
+      ['Mood', take(/^creating\s*/i,4).replace(/\s*atmosphere$/i,'')],
+      ['Colour', take(/^in\s*/i,5)],
+      ['Style', parts[6]||'']
+    ];
+  };
+  const flag = s => esc(s).replace(/(not further described in terms of appearance or clothing|presumably|possibly|[一-鿿]+)/g, '<span class="flag">$1</span>');
+  const renderPrompt = (p, cut) => cut < 0 ? flag(p) : flag(p.slice(0, cut)) + '<span class="cut">' + flag(p.slice(cut)) + '</span>';
+
+  let cur = 3;
+  const lines = $('#lines');
+  lines.innerHTML = L.map((l,i) => `<button class="ln" role="option" data-i="${i}" aria-selected="${i===cur}"><img src="assets/stills/line-${String(i+1).padStart(2,'0')}.jpg" alt="" loading="lazy"><span class="zh">${l[0]}</span><span class="dot" style="background:var(${VC[l[2]]})"></span></button>`).join('');
+  lines.querySelectorAll('.ln').forEach(b => b.onclick = () => select(+b.dataset.i));
+  function select(i){
+    cur = i;
+    lines.querySelectorAll('.ln').forEach(b => b.setAttribute('aria-selected', +b.dataset.i===i));
+    const [zh,en,v,p] = L[i], [n,cut] = TOK[i], pct = Math.min(100, 75/n*100);
+    $('#detail').innerHTML = `<div class="detail">
+      <div><img src="assets/stills/line-${String(i+1).padStart(2,'0')}.jpg" alt="Generated image for line ${i+1}: ${esc(en)}">
+        <p class="small" style="margin:10px 0 0"><span class="pill ${v}">${VL[v]}</span> ${esc(NOTE[i])}</p></div>
+      <div>
+        <span class="muted">Half-line ${i+1} of 14</span>
+        <p class="big-zh zh">${zh}</p>
+        <p class="small" style="margin:4px 0 0"><i>${esc(en)}</i></p>
+        <dl class="slots">${parse(p).map(([k,val]) => `<dt>${k}</dt><dd>${esc(val||'—')}</dd>`).join('')}</dl>
+        <div class="muted" style="margin-bottom:4px">Packed prompt · <span style="color:var(--accent)">struck through</span> = beyond CLIP's window · <span style="color:var(--gold)">highlighted</span> = schema leak</div>
+        <div class="tok">${renderPrompt(p, cut)}</div>
+        <div class="bar" style="margin-top:10px"><i style="width:${pct}%;${cut<0?'':'background:var(--accent)'}"></i></div>
+        <div class="meterline"><span>${n} CLIP tokens · limit 75</span><span>${cut<0?'fits: CLIP scores the whole prompt':`CLIP sees ${Math.round(pct)}% of the prompt`}</span></div>
+      </div></div>`;
+  }
+  select(cur);
+
+  // ---------- gallery with filters ----------
+  let gf = 'all';
+  const renderGal = () => {
+    const counts = {all:L.length}; L.forEach(l => counts[l[2]] = (counts[l[2]]||0)+1);
+    $('#galFilters').innerHTML = ['all','good','part','miss'].map(k => `<button class="chip" aria-pressed="${gf===k}" data-k="${k}">${k==='all'?'All':VL[k]} · ${counts[k]||0}</button>`).join('');
+    $('#galFilters').querySelectorAll('button').forEach(b => b.onclick = () => { gf = b.dataset.k; renderGal(); });
+    $('#gal').innerHTML = L.map((l,i) => `<button class="${gf==='all'||gf===l[2]?'':'dim'}" data-i="${i}" title="${l[0]}: ${VL[l[2]]}"><img src="assets/stills/line-${String(i+1).padStart(2,'0')}.jpg" alt="Line ${i+1}, ${VL[l[2]]}" loading="lazy"><span class="badge" style="background:var(${VC[l[2]]})"></span></button>`).join('');
+    $('#gal').querySelectorAll('button').forEach(b => b.onclick = () => { select(+b.dataset.i); $('#explore').scrollIntoView({behavior:'smooth'}); });
+  };
+  renderGal();
+
+  // ---------- morph schedule ----------
+  function drawMorph(){
+    const W=440,H=150,m={l:34,r:10,t:10,b:24}, N=30, k=+$('#morphT').value;
+    const x=i=>m.l+(W-m.l-m.r)*i/(N-1), y=v=>m.t+(H-m.t-m.b)*(1-v);
+    const t=i=>i/(N-1), blend=i=>i<N/2?0:(t(i)-0.5)*2, str=i=>0.3+0.4*(1-Math.abs(2*t(i)-1));
+    let s='';
+    [0,0.5,1].forEach(v=>s+=`<line x1="${m.l}" x2="${W-m.r}" y1="${y(v)}" y2="${y(v)}" stroke="${css('--grid')}"/><text x="${m.l-6}" y="${y(v)+4}" text-anchor="end" font-size="10">${v}</text>`);
+    const path=f=>Array.from({length:N},(_,i)=>`${x(i)},${y(f(i))}`).join(' ');
+    s+=`<polyline fill="none" stroke="${css('--jade')}" stroke-width="2.5" points="${path(blend)}"/><polyline fill="none" stroke="${css('--accent')}" stroke-width="2.5" points="${path(str)}"/>`;
+    s+=`<line x1="${x(k)}" x2="${x(k)}" y1="${m.t}" y2="${H-m.b}" stroke="${css('--ink-3')}" stroke-dasharray="3 3"/><circle cx="${x(k)}" cy="${y(str(k))}" r="4.5" fill="${css('--accent')}"/><circle cx="${x(k)}" cy="${y(blend(k))}" r="4.5" fill="${css('--jade')}"/>`;
+    s+=`<text x="${W-m.r}" y="${H-6}" text-anchor="end" font-size="10">frame →</text><text x="${m.l+4}" y="${H-6}" font-size="10" style="fill:${css('--jade')}">pixel blend A→B</text><text x="${m.l+110}" y="${H-6}" font-size="10" style="fill:${css('--accent')}">img2img strength</text>`;
+    $('#morphChart').innerHTML=s;
+    const pa = k<N/2 ? `"A, ${Math.round(t(k)*2*100)}% transitioning to B"` : `"${Math.round((1-blend(k))*100)}% A, transitioning to B"`;
+    $('#morphTxt').textContent = `frame ${k+1}/30 · base: ${k<N/2?'image A':'blend '+blend(k).toFixed(2)} · strength ${str(k).toFixed(2)} · prompt ${pa}`;
+  }
+  $('#morphT').addEventListener('input', drawMorph);
+
+  // ---------- synthetic pause detection ----------
+  // five syllables + one long caesura and one short hesitation; deterministic pseudo-noise
+  const FS = 100; // envelope samples per second
+  const env = (() => {
+    const seg = [[0,.15,0],[.15,.55,1],[.55,.63,0],[.63,1.0,.9],[1.0,1.65,0],[1.65,2.05,.75],[2.05,2.35,0],[2.35,2.75,.85],[2.75,2.95,0],[2.95,3.5,.6],[3.5,3.8,0]];
+    const out=[]; let r=7;
+    const rnd=()=>{ r=(r*16807)%2147483647; return r/2147483647; };
+    for (let i=0;i<3.8*FS;i++){ const tt=i/FS; const sgm=seg.find(s=>tt>=s[0]&&tt<s[1])||[0,0,0];
+      const shape = sgm[2] ? Math.sin(Math.PI*(tt-sgm[0])/(sgm[1]-sgm[0]))**0.6 : 0;
+      out.push(sgm[2]*shape*(0.75+0.25*rnd()) + 0.03 + 0.04*rnd()); }
+    return out;
+  })();
+  function drawWave(){
+    const W=460,H=170,m={l:10,r:10,t:10,b:26}, f=+$('#thr').value, minS=+$('#sil').value;
+    $('#thrV').textContent=f.toFixed(1); $('#silV').textContent=minS;
+    const rms=Math.sqrt(env.reduce((a,v)=>a+v*v,0)/env.length), thr=Math.min(0.95, rms/f*0.25);
+    const x=i=>m.l+(W-m.l-m.r)*i/(env.length-1), y=v=>m.t+(H-m.t-m.b)*(1-v);
+    // find silent runs
+    const pauses=[]; let st=-1;
+    env.forEach((v,i)=>{ if(v<thr){ if(st<0) st=i; } else if(st>=0){ if((i-st)*1000/FS>=minS) pauses.push([st,i]); st=-1; } });
+    if(st>=0 && (env.length-st)*1000/FS>=minS) pauses.push([st,env.length]);
+    const inner = pauses.filter(([a,b])=>a>0 && b<env.length);
+    let s='';
+    inner.forEach(([a,b])=>s+=`<rect x="${x(a)}" y="${m.t}" width="${x(b)-x(a)}" height="${H-m.t-m.b}" fill="${css('--gold-soft')}"/><text x="${(x(a)+x(b))/2}" y="${H-8}" text-anchor="middle" font-size="10" style="fill:${css('--gold')}">${Math.round((b-a)*1000/FS)} ms</text>`);
+    s+=`<polyline fill="none" stroke="${css('--ink-2')}" stroke-width="1.4" points="${env.map((v,i)=>x(i)+','+y(v)).join(' ')}"/>`;
+    s+=`<line x1="${m.l}" x2="${W-m.r}" y1="${y(thr)}" y2="${y(thr)}" stroke="${css('--accent')}" stroke-dasharray="5 4"/><text x="${W-m.r}" y="${y(thr)-4}" text-anchor="end" font-size="10" style="fill:${css('--accent')}">silence threshold</text>`;
+    $('#waveChart').innerHTML=s;
+    $('#waveTxt').textContent = `${inner.length} pause${inner.length===1?'':'s'} detected. The signal has one real caesura (~650 ms) and one short hesitation (~300 ms). Synthetic signal for illustration.`;
+  }
+  ['thr','sil'].forEach(id => $('#'+id).addEventListener('input', drawWave));
+
+  // ---------- recitation guide (GLM-4 output for 感遇 其一, translated) ----------
+  const R = [
+    {zh:'孤鸿海上来', py:['gū','hóng','hǎi','shàng','lái'], stress:[0,2], cut:2,
+     g:[['Stress','孤 and 海: the goose\'s solitude and the vastness of the sea'],['Pause','a slight pause before 上来, marking the shift in meaning'],['Tempo','slow and even, mirroring the lone flight'],['Tone','low and heavy: loneliness and a hard journey']]},
+    {zh:'池潢不敢顾', py:['chí','huáng','bù','gǎn','gù'], stress:[2,3], cut:2,
+     g:[['Stress','不敢 (dare not): the goose\'s caution and fear'],['Pause','no marked pause; join 池潢 smoothly to 不敢顾'],['Tempo','a little faster than line 1, a hurried glance'],['Tone','rising slightly, showing inner tension']]},
+    {zh:'侧见双翠鸟', py:['cè','jiàn','shuāng','cuì','niǎo'], stress:[2,3,4], cut:2,
+     g:[['Stress','双翠鸟: describe the kingfishers\' beauty in a bright voice'],['Pause','a short pause after 侧见 before painting the scene'],['Tempo','light and brisk, lively birds'],['Tone','soft, admiring']]},
+  ];
+  let rc = 0;
+  const renderR = () => {
+    $('#rLines').innerHTML = R.map((r,i)=>`<button class="chip zh" aria-pressed="${i===rc}" data-i="${i}">${r.zh}</button>`).join('');
+    $('#rLines').querySelectorAll('button').forEach(b => b.onclick = () => { rc = +b.dataset.i; renderR(); });
+    const r = R[rc];
+    const chars = [...r.zh].map((c,i)=>`${i===r.cut?'<span class="sep" title="caesura"></span>':''}<div class="ch zh ${r.stress.includes(i)?'stress':''}"><span class="py">${r.py[i]}</span>${c}</div>`).join('');
+    $('#rLine').innerHTML = `<div class="poemline">${chars}</div><dl class="guide">${r.g.map(([k,v])=>`<dt>${k}</dt><dd>${esc(v)}</dd>`).join('')}</dl>`;
+  };
+  renderR();
+
+  function drawAll(){ drawMorph(); drawWave(); }
+  drawAll();
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', drawAll);
+})();
+</script>
+</body>
+</html>
